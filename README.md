@@ -11,3 +11,5 @@ To convert a .cin to .json:
 To convert a .json to .cin:
 
 `python convert_cin.py "path\to\file" cin`
+
+For more information on how CIN files work and how they store data, read [the CIN documentation here.](https://github.com/0HMyC/p3cpk/blob/main/DOCUMENTATION.md#what-is-a-cin-file)
