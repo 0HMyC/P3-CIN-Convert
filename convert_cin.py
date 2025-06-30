@@ -8,6 +8,26 @@ parser.add_argument("input", metavar='file', type=str, help="The CIN to edit.")
 parser.add_argument("type", choices=['json', 'cin'], type=str, help="The filetype that the input will be converted to.")
 args = parser.parse_args()
 
+# Takes in array of bytes and converts to hex array string ("AC 08 FF")
+# Values put in must be no longer than a byte (0-255)
+def nums_to_hex_string(numbers):
+	output = ""
+	for i in numbers:
+		if not output:
+			output = f"{i:02X}"
+		else:
+			output = f"{output} {i:02X}"
+	# print(output)
+	return output
+
+def hex_string_to_nums(hexstring):
+	output = []
+	for i in hexstring.split():
+		output.append(int(i, 16))
+		#print(i)
+	# print(output)
+	return output
+
 def read_data(desType, byteData):
 	return struct.unpack(desType, byteData)[0]
 	
@@ -70,9 +90,8 @@ def cin_to_json(iBytes):
 		outJS["Header"]["u16_Unknown1"] = read_data('<H', iBytes[4:6])
 		outJS["Header"]["HoldFrame"] = read_data('<H', iBytes[6:8])
 		outJS["Header"]["ObjectCount"] = read_data('<H', iBytes[8:0xA])
-		outJS["Header"]["u8_UnkColours"] = struct.unpack('<'+'B'*22, iBytes[0xA:0x20])
-	# TODO: Read this & u8_UnkColours to hex array ala LEET
-	outJS["u8_Unknown"] = struct.unpack('<'+'B'*10, iBytes[dataPosition-10:dataPosition])
+		outJS["Header"]["u8_UnkColours"] = nums_to_hex_string(struct.unpack('<'+'B'*22, iBytes[0xA:0x20]))
+	outJS["u8_Unknown"] = nums_to_hex_string(struct.unpack('<'+'B'*10, iBytes[dataPosition-10:dataPosition]))
 	outJS["Objects"] = []
 	for i in range(outJS["Header"]["ObjectCount"]):
 		curObject = {}
@@ -113,7 +132,13 @@ def json_to_cin(inJSON):
 		inJSON["Header"]["HoldFrame"],
 		inJSON["Header"]["ObjectCount"]
 	)
-	outBytes += bytes(inJSON["Header"]["u8_UnkColours"]) + bytes(inJSON["u8_Unknown"])
+	# Compatibility for json files made with older version of tool. Assumes u8_Unknown will be same type, because it should always be.
+	# TODO: Add an auto-update feature for these old files?
+	# TODO: Print warning to inform user that they should update their json files to new formatting?
+	if type(inJSON["Header"]["u8_UnkColours"]) is list:
+		outBytes += bytes(inJSON["Header"]["u8_UnkColours"]) + bytes(inJSON["u8_Unknown"])
+	else:
+		outBytes += bytes(hex_string_to_nums(inJSON["Header"]["u8_UnkColours"])) + bytes(hex_string_to_nums(inJSON["u8_Unknown"]))
 	# Write objects
 	for obj in inJSON["Objects"]:
 		for listName, listValue in obj.items():
